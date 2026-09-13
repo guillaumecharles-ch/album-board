@@ -234,7 +234,9 @@ function fetchRemote(){
   return fetch(API+"?ref="+encodeURIComponent(CFG.branch)+"&cb="+Date.now(), {headers:headers(true), cache:"no-store"})
     .then(function(r){
       if(r.status===404) return {data:{tasks:[]}, sha:null};
-      if(!r.ok) throw new Error("GitHub "+r.status+(r.status===401?" — token invalide":""));
+      if(r.status===401) throw new Error("Token invalide ou expiré");
+      if(r.status===403) throw new Error(token ? "Accès refusé — le token n'a pas les droits" : "Limite GitHub atteinte — ajoute ton token");
+      if(!r.ok) throw new Error("GitHub "+r.status);
       return r.json().then(function(j){
         var parsed;
         try{ parsed = JSON.parse(b64decode(j.content)); }catch(e){ parsed = {tasks:[]}; }
@@ -492,9 +494,20 @@ if(CFG.owner.indexOf("__") === 0){
   document.getElementById("err").textContent = "Configuration manquante : renseigne owner/repo dans index.html.";
 }
 load();
-poll = setInterval(function(){ if(!saving && !queue.length && !openNew && document.visibilityState==="visible") load(); }, 15000);
+function typing(){
+  var a = document.activeElement;
+  return !!a && (a.tagName==="TEXTAREA" || a.tagName==="INPUT");
+}
+function idle(){ return !saving && !queue.length && !openNew && !typing(); }
+var lastPoll = 0;
+poll = setInterval(function(){
+  var every = token ? 15000 : 120000;          // unauthenticated: 60 requêtes/h max
+  if(Date.now()-lastPoll < every) return;
+  if(document.visibilityState!=="visible" || !idle()) return;
+  lastPoll = Date.now(); load();
+}, 5000);
 document.addEventListener("visibilitychange", function(){
-  if(document.visibilityState==="visible" && !saving && !queue.length) load();
+  if(document.visibilityState==="visible" && idle()){ lastPoll = Date.now(); load(); }
 });
 
 })();
