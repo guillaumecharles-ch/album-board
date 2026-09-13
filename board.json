@@ -1,7 +1,3 @@
-{"tasks":[
- {"id":"t1","title":"Finir le texte du 2e couplet","who":"Mathieu","status":"backlog","created":"2026-09-13T09:00:00.000Z"},
- {"id":"t2","title":"Choisir la tracklist définitive","who":"","status":"backlog","created":"2026-09-13T09:01:00.000Z"},
- {"id":"t3","title":"Réserver le studio pour les prises de voix","who":"Guillaume","status":"pret","created":"2026-09-13T09:02:00.000Z"},
- {"id":"t4","title":"Mix du morceau 3","who":"Guillaume","status":"encours","created":"2026-09-13T09:03:00.000Z"},
- {"id":"t5","title":"Maquette guitare morceau 1","who":"Mathieu","status":"fini","created":"2026-09-13T09:04:00.000Z"}
-]}
+{
+  "tasks": []
+}
