@@ -1,0 +1,503 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Album Board</title>
+<style>
+  :root{
+    --bg:#f6f6f4; --panel:#fff; --panel-2:#fbfbfa; --ink:#1b1b19; --ink-2:#6b6b66;
+    --line:#e3e3df; --accent:#c8553d; --accent-soft:#f5e2dd;
+    --m:#3f6f9c; --m-soft:#e2ecf5; --g:#4f7a52; --g-soft:#e3efe4;
+    --shadow:0 1px 2px rgba(0,0,0,.05),0 4px 12px rgba(0,0,0,.04);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#17171a; --panel:#202024; --panel-2:#26262b; --ink:#eceae6; --ink-2:#9b9a95;
+      --line:#33333a; --accent:#e0785f; --accent-soft:#3a2622;
+      --m:#8ab6dd; --m-soft:#25323d; --g:#8fbe93; --g-soft:#24322a;
+      --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 14px rgba(0,0,0,.25);
+    }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg); color:var(--ink); min-height:100vh;
+    font:15px/1.45 ui-sans-serif,-apple-system,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  button,input,select,textarea{font:inherit;color:inherit}
+  button{cursor:pointer}
+
+  header{
+    display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+    padding:14px 20px; border-bottom:1px solid var(--line); background:var(--panel);
+    position:sticky; top:0; z-index:20;
+  }
+  h1{font-size:17px; margin:0; letter-spacing:-.01em; font-weight:650}
+  h1 span{color:var(--accent)}
+  .spacer{flex:1}
+  .pill{
+    display:inline-flex; align-items:center; gap:6px; font-size:12.5px; color:var(--ink-2);
+    border:1px solid var(--line); border-radius:99px; padding:4px 11px; background:var(--panel-2);
+  }
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--ink-2);flex:none}
+  .pill.ok .dot{background:#4f9d5a} .pill.busy .dot{background:#d3973b}
+  .pill.err .dot{background:#c4503c} .pill.ro .dot{background:#8a8a84}
+  .ghost{
+    background:var(--panel-2); border:1px solid var(--line); border-radius:8px;
+    padding:5px 11px; font-size:13px; color:var(--ink-2);
+  }
+  .ghost:hover{color:var(--ink); border-color:var(--ink-2)}
+  select.me{
+    background:var(--panel-2); border:1px solid var(--line); border-radius:8px;
+    padding:5px 8px; font-size:13px;
+  }
+
+  main{
+    display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px;
+    padding:18px 20px 60px; align-items:start;
+  }
+  @media (max-width:900px){ main{grid-template-columns:1fr} }
+
+  .col{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:10px; box-shadow:var(--shadow)}
+  .col.over{border-color:var(--accent); background:var(--accent-soft)}
+  .col h2{
+    font-size:12px; text-transform:uppercase; letter-spacing:.07em; color:var(--ink-2);
+    margin:4px 6px 10px; display:flex; align-items:center; gap:7px; font-weight:650;
+  }
+  .count{background:var(--panel-2); border:1px solid var(--line); border-radius:99px; padding:0 7px; font-size:11px; letter-spacing:0}
+  .list{display:flex; flex-direction:column; gap:8px; min-height:12px}
+
+  .card{
+    background:var(--panel-2); border:1px solid var(--line); border-radius:10px;
+    padding:10px 10px 8px; display:flex; flex-direction:column; gap:8px;
+  }
+  .card.drag{opacity:.4}
+  .card .title{
+    border:0; background:transparent; width:100%; resize:none; overflow:hidden;
+    font-size:14.5px; line-height:1.4; padding:0; outline:none;
+  }
+  .card .row{display:flex; align-items:center; gap:6px}
+  .who{
+    border:1px solid var(--line); background:var(--panel); border-radius:99px;
+    padding:2px 9px; font-size:12px; color:var(--ink-2);
+  }
+  .who[data-who="Mathieu"]{background:var(--m-soft); border-color:transparent; color:var(--m); font-weight:600}
+  .who[data-who="Guillaume"]{background:var(--g-soft); border-color:transparent; color:var(--g); font-weight:600}
+  .arrow,.del{
+    border:1px solid transparent; background:transparent; color:var(--ink-2);
+    border-radius:7px; padding:2px 7px; font-size:13px; line-height:1.4;
+  }
+  .arrow:hover,.del:hover{background:var(--panel); border-color:var(--line); color:var(--ink)}
+  .arrow:disabled{opacity:.25; cursor:default}
+  .del:hover{color:var(--accent)}
+
+  .add{
+    width:100%; text-align:left; margin-top:8px; border:1px dashed var(--line);
+    background:transparent; color:var(--ink-2); border-radius:9px; padding:7px 10px; font-size:13.5px;
+  }
+  .add:hover{border-color:var(--accent); color:var(--accent)}
+  .newbox{display:flex; flex-direction:column; gap:6px; margin-top:8px}
+  .newbox textarea{
+    border:1px solid var(--accent); border-radius:9px; padding:8px 10px; background:var(--panel-2);
+    resize:none; outline:none; font-size:14.5px; line-height:1.4;
+  }
+  .newbox .row{display:flex; gap:6px; align-items:center}
+  .newbox select{border:1px solid var(--line); border-radius:8px; padding:4px 7px; font-size:12.5px; background:var(--panel-2)}
+  .primary{background:var(--accent); color:#fff; border:0; border-radius:8px; padding:5px 12px; font-size:13px; font-weight:600}
+
+  dialog{
+    border:1px solid var(--line); border-radius:14px; background:var(--panel); color:var(--ink);
+    padding:20px; max-width:440px; width:calc(100% - 32px); box-shadow:var(--shadow);
+  }
+  dialog::backdrop{background:rgba(0,0,0,.4)}
+  dialog h3{margin:0 0 8px; font-size:16px}
+  dialog p{color:var(--ink-2); font-size:13.5px; margin:0 0 12px}
+  dialog input{width:100%; border:1px solid var(--line); border-radius:9px; padding:9px 11px; background:var(--panel-2); outline:none}
+  dialog input:focus{border-color:var(--accent)}
+  dialog .acts{display:flex; gap:8px; justify-content:flex-end; margin-top:14px}
+  a{color:var(--accent)}
+  .err{color:var(--accent); font-size:13px; padding:0 20px}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Album<span>.</span>Board</h1>
+  <span class="pill" id="status"><span class="dot"></span><span id="statusText">Chargement…</span></span>
+  <span class="spacer"></span>
+  <label class="pill" style="gap:8px">Moi&nbsp;: <select class="me" id="me"></select></label>
+  <button class="ghost" id="tokenBtn">Token</button>
+</header>
+
+<div class="err" id="err"></div>
+<main id="board"></main>
+
+<dialog id="tokenDlg">
+  <h3>Ton token GitHub</h3>
+  <p>Colle un <em>personal access token</em> avec accès en écriture à ce dépôt. Il reste dans ton navigateur (localStorage) et n'est jamais publié. Sans token, le board est en lecture seule.</p>
+  <input type="password" id="tokenInput" placeholder="github_pat_… ou ghp_…" autocomplete="off">
+  <div class="acts">
+    <button class="ghost" id="tokenClear">Effacer</button>
+    <button class="ghost" id="tokenCancel">Annuler</button>
+    <button class="primary" id="tokenSave">Enregistrer</button>
+  </div>
+</dialog>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------- configuration ---------- */
+var CFG = {
+  owner:  "guillaumecharles-ch",
+  repo:   "album-board",
+  branch: "main",
+  path:   "board.json"
+};
+var PEOPLE = ["Mathieu","Guillaume"];
+var COLS = [
+  {id:"backlog", label:"Backlog"},
+  {id:"pret",    label:"Prêt"},
+  {id:"encours", label:"En cours"},
+  {id:"fini",    label:"Fini"}
+];
+var API = "https://api.github.com/repos/"+CFG.owner+"/"+CFG.repo+"/contents/"+CFG.path;
+
+/* ---------- local prefs ---------- */
+var LS = {
+  get:function(k,d){ try{ var v=localStorage.getItem(k); return v===null?d:v; }catch(e){ return d; } },
+  set:function(k,v){ try{ localStorage.setItem(k,v); }catch(e){} },
+  del:function(k){ try{ localStorage.removeItem(k); }catch(e){} }
+};
+var token = LS.get("ab.token","");
+var me    = LS.get("ab.me", PEOPLE[1]);
+
+/* ---------- state ---------- */
+var state = {tasks:[]};   // what we render
+var sha   = null;         // sha of board.json on GitHub
+var queue = [];           // ops made locally, not yet confirmed on GitHub
+var saving = false, again = false, poll = null;
+
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+function clone(o){ return JSON.parse(JSON.stringify(o)); }
+
+/* ---------- operations (replayable on top of fresh remote state) ---------- */
+function apply(st, op){
+  var t, i;
+  if(op.t==="add"){
+    if(st.tasks.some(function(x){return x.id===op.task.id;})) return st;
+    st.tasks.push(clone(op.task));
+  } else if(op.t==="move"){
+    i = st.tasks.findIndex(function(x){return x.id===op.id;});
+    if(i<0) return st;
+    t = st.tasks.splice(i,1)[0];
+    t.status = op.status;
+    var at = op.before ? st.tasks.findIndex(function(x){return x.id===op.before;}) : -1;
+    if(at<0) st.tasks.push(t); else st.tasks.splice(at,0,t);
+  } else if(op.t==="who"){
+    t = st.tasks.find(function(x){return x.id===op.id;}); if(t) t.who = op.who;
+  } else if(op.t==="title"){
+    t = st.tasks.find(function(x){return x.id===op.id;}); if(t) t.title = op.title;
+  } else if(op.t==="del"){
+    st.tasks = st.tasks.filter(function(x){return x.id!==op.id;});
+  }
+  return st;
+}
+
+function doOp(op){
+  apply(state, op);
+  queue.push(op);
+  render();
+  save();
+}
+
+/* ---------- github i/o ---------- */
+function headers(auth){
+  var h = {"Accept":"application/vnd.github+json"};
+  if(auth && token) h["Authorization"] = "Bearer " + token;
+  return h;
+}
+function b64encode(str){
+  var bytes = new TextEncoder().encode(str), bin="";
+  for(var i=0;i<bytes.length;i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin);
+}
+function b64decode(b64){
+  var bin = atob(b64.replace(/\s/g,"")), bytes = new Uint8Array(bin.length);
+  for(var i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
+}
+
+function fetchRemote(){
+  return fetch(API+"?ref="+encodeURIComponent(CFG.branch)+"&cb="+Date.now(), {headers:headers(true), cache:"no-store"})
+    .then(function(r){
+      if(r.status===404) return {data:{tasks:[]}, sha:null};
+      if(!r.ok) throw new Error("GitHub "+r.status+(r.status===401?" — token invalide":""));
+      return r.json().then(function(j){
+        var parsed;
+        try{ parsed = JSON.parse(b64decode(j.content)); }catch(e){ parsed = {tasks:[]}; }
+        if(!parsed || !Array.isArray(parsed.tasks)) parsed = {tasks:[]};
+        return {data:parsed, sha:j.sha};
+      });
+    });
+}
+
+function load(){
+  return fetchRemote().then(function(res){
+    sha = res.sha;
+    var st = res.data;
+    queue.forEach(function(op){ apply(st, op); });   // keep unsaved local edits visible
+    state = st;
+    render();
+    setStatus(token ? (queue.length?"busy":"ok") : "ro", token ? (queue.length?"Enregistrement…":"Synchronisé") : "Lecture seule");
+  }).catch(function(e){
+    setStatus("err", e.message);
+  });
+}
+
+function save(){
+  if(!token){ setStatus("ro","Lecture seule — ajoute ton token"); return; }
+  if(saving){ again = true; return; }
+  if(!queue.length) return;
+  saving = true; setStatus("busy","Enregistrement…");
+
+  var batch = queue.slice();
+  fetchRemote().then(function(res){
+    var st = res.data;
+    batch.forEach(function(op){ apply(st, op); });
+    var body = {
+      message: "board: "+batch.length+" modif"+(batch.length>1?"s":"")+" ("+me+")",
+      content: b64encode(JSON.stringify(st, null, 2)+"\n"),
+      branch:  CFG.branch
+    };
+    if(res.sha) body.sha = res.sha;
+    return fetch(API, {method:"PUT", headers:Object.assign({"Content-Type":"application/json"},headers(true)), body:JSON.stringify(body)})
+      .then(function(r){
+        if(r.status===409 || r.status===422) throw Object.assign(new Error("conflit"), {retry:true});
+        if(!r.ok) return r.json().catch(function(){return {};}).then(function(j){
+          throw new Error("GitHub "+r.status+(j.message?" — "+j.message:""));
+        });
+        return r.json();
+      })
+      .then(function(j){
+        sha = j.content.sha;
+        queue = queue.slice(batch.length);
+        var fresh = st;
+        queue.forEach(function(op){ apply(fresh, op); });
+        state = fresh; render();
+      });
+  }).then(function(){
+    saving = false;
+    if(again || queue.length){ again=false; setTimeout(save, 150); }
+    else setStatus("ok","Synchronisé");
+  }).catch(function(e){
+    saving = false;
+    if(e.retry){ again=false; setTimeout(save, 400+Math.random()*600); }
+    else { setStatus("err", e.message); again=false; }
+  });
+}
+
+function setStatus(kind, text){
+  var el = document.getElementById("status");
+  el.className = "pill " + kind;
+  document.getElementById("statusText").textContent = text;
+}
+
+/* ---------- rendering ---------- */
+var board = document.getElementById("board");
+var openNew = null;  // column id with the "new task" box open
+
+function render(){
+  var focusId = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.focus : null;
+  var selStart = document.activeElement && document.activeElement.selectionStart;
+  board.innerHTML = "";
+
+  COLS.forEach(function(col, ci){
+    var items = state.tasks.filter(function(t){return t.status===col.id;});
+    var el = document.createElement("section");
+    el.className = "col"; el.dataset.col = col.id;
+    var h = document.createElement("h2");
+    h.innerHTML = '<span>'+col.label+'</span><span class="count">'+items.length+'</span>';
+    el.appendChild(h);
+
+    var list = document.createElement("div");
+    list.className = "list";
+    items.forEach(function(t){ list.appendChild(cardEl(t, ci)); });
+    el.appendChild(list);
+
+    if(openNew === col.id) el.appendChild(newBox(col.id));
+    else {
+      var add = document.createElement("button");
+      add.className = "add"; add.textContent = "+ Ajouter une tâche";
+      add.onclick = function(){ openNew = col.id; render(); };
+      el.appendChild(add);
+    }
+
+    /* drop target */
+    el.addEventListener("dragover", function(e){ e.preventDefault(); el.classList.add("over"); });
+    el.addEventListener("dragleave", function(){ el.classList.remove("over"); });
+    el.addEventListener("drop", function(e){
+      e.preventDefault(); el.classList.remove("over");
+      var id = e.dataTransfer.getData("text/plain"); if(!id) return;
+      var before = null, cards = [].slice.call(list.querySelectorAll(".card"));
+      for(var i=0;i<cards.length;i++){
+        var r = cards[i].getBoundingClientRect();
+        if(e.clientY < r.top + r.height/2){ before = cards[i].dataset.id; break; }
+      }
+      if(before === id) return;
+      doOp({t:"move", id:id, status:col.id, before:before});
+    });
+
+    board.appendChild(el);
+  });
+
+  if(focusId){
+    var again2 = document.querySelector('[data-focus="'+focusId+'"]');
+    if(again2){ again2.focus(); try{ again2.setSelectionRange(selStart,selStart); }catch(e){} }
+  }
+}
+
+function cardEl(t, ci){
+  var c = document.createElement("article");
+  c.className = "card"; c.dataset.id = t.id; c.draggable = true;
+
+  c.addEventListener("dragstart", function(e){
+    e.dataTransfer.setData("text/plain", t.id);
+    e.dataTransfer.effectAllowed = "move";
+    setTimeout(function(){ c.classList.add("drag"); },0);
+  });
+  c.addEventListener("dragend", function(){ c.classList.remove("drag"); });
+
+  var ta = document.createElement("textarea");
+  ta.className = "title"; ta.rows = 1; ta.value = t.title;
+  ta.dataset.focus = t.id;
+  ta.addEventListener("input", function(){ ta.style.height="auto"; ta.style.height=ta.scrollHeight+"px"; });
+  ta.addEventListener("focus", function(){ c.draggable = false; });
+  ta.addEventListener("blur", function(){
+    c.draggable = true;
+    var v = ta.value.trim();
+    if(!v){ ta.value = t.title; return; }
+    if(v !== t.title) doOp({t:"title", id:t.id, title:v});
+  });
+  ta.addEventListener("keydown", function(e){
+    if(e.key==="Enter"){ e.preventDefault(); ta.blur(); }
+    if(e.key==="Escape"){ ta.value = t.title; ta.blur(); }
+  });
+  c.appendChild(ta);
+  requestAnimationFrame(function(){ ta.style.height="auto"; ta.style.height=ta.scrollHeight+"px"; });
+
+  var row = document.createElement("div"); row.className = "row";
+
+  var who = document.createElement("button");
+  who.className = "who"; who.dataset.who = t.who || "";
+  who.textContent = t.who || "non assigné";
+  who.title = "Changer l'assignation";
+  who.onclick = function(){
+    var order = PEOPLE.concat([""]);
+    var next = order[(order.indexOf(t.who||"")+1) % order.length];
+    doOp({t:"who", id:t.id, who:next});
+  };
+  row.appendChild(who);
+
+  row.appendChild(Object.assign(document.createElement("span"),{className:"spacer",style:"flex:1"}));
+
+  var left = document.createElement("button");
+  left.className = "arrow"; left.textContent = "←"; left.title = "Colonne précédente";
+  left.disabled = ci===0;
+  left.onclick = function(){ doOp({t:"move", id:t.id, status:COLS[ci-1].id, before:null}); };
+  row.appendChild(left);
+
+  var right = document.createElement("button");
+  right.className = "arrow"; right.textContent = "→"; right.title = "Colonne suivante";
+  right.disabled = ci===COLS.length-1;
+  right.onclick = function(){ doOp({t:"move", id:t.id, status:COLS[ci+1].id, before:null}); };
+  row.appendChild(right);
+
+  var del = document.createElement("button");
+  del.className = "del"; del.textContent = "✕"; del.title = "Supprimer";
+  del.onclick = function(){ if(confirm("Supprimer « "+t.title+" » ?")) doOp({t:"del", id:t.id}); };
+  row.appendChild(del);
+
+  c.appendChild(row);
+  return c;
+}
+
+function newBox(colId){
+  var box = document.createElement("div"); box.className = "newbox";
+  var ta = document.createElement("textarea");
+  ta.rows = 2; ta.placeholder = "Titre de la tâche…"; ta.dataset.focus = "new:"+colId;
+  box.appendChild(ta);
+
+  var row = document.createElement("div"); row.className = "row";
+  var sel = document.createElement("select");
+  [""].concat(PEOPLE).forEach(function(p){
+    var o = document.createElement("option"); o.value = p; o.textContent = p || "non assigné";
+    if(p === me) o.selected = true;
+    sel.appendChild(o);
+  });
+  row.appendChild(sel);
+  row.appendChild(Object.assign(document.createElement("span"),{style:"flex:1"}));
+  var cancel = document.createElement("button");
+  cancel.className = "ghost"; cancel.textContent = "Annuler";
+  cancel.onclick = function(){ openNew = null; render(); };
+  row.appendChild(cancel);
+  var ok = document.createElement("button");
+  ok.className = "primary"; ok.textContent = "Ajouter";
+  row.appendChild(ok);
+  box.appendChild(row);
+
+  function submit(keepOpen){
+    var v = ta.value.trim(); if(!v) return;
+    doOp({t:"add", task:{id:uid(), title:v, who:sel.value, status:colId, created:new Date().toISOString()}});
+    openNew = keepOpen ? colId : null;
+    render();
+    if(keepOpen){
+      var next = document.querySelector('[data-focus="new:'+colId+'"]');
+      if(next) next.focus();
+    }
+  }
+  ok.onclick = function(){ submit(true); };
+  ta.addEventListener("keydown", function(e){
+    if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); submit(true); }
+    if(e.key==="Escape"){ openNew = null; render(); }
+  });
+
+  requestAnimationFrame(function(){ ta.focus(); });
+  return box;
+}
+
+/* ---------- header controls ---------- */
+var meSel = document.getElementById("me");
+PEOPLE.forEach(function(p){
+  var o = document.createElement("option"); o.value = p; o.textContent = p;
+  if(p === me) o.selected = true;
+  meSel.appendChild(o);
+});
+meSel.onchange = function(){ me = meSel.value; LS.set("ab.me", me); };
+
+var dlg = document.getElementById("tokenDlg"), tIn = document.getElementById("tokenInput");
+document.getElementById("tokenBtn").onclick = function(){ tIn.value = token; dlg.showModal(); };
+document.getElementById("tokenCancel").onclick = function(){ dlg.close(); };
+document.getElementById("tokenSave").onclick = function(){
+  token = tIn.value.trim(); LS.set("ab.token", token); dlg.close(); load().then(save);
+};
+document.getElementById("tokenClear").onclick = function(){
+  token = ""; LS.del("ab.token"); tIn.value = ""; dlg.close(); load();
+};
+
+/* ---------- boot ---------- */
+if(CFG.owner.indexOf("__") === 0){
+  document.getElementById("err").textContent = "Configuration manquante : renseigne owner/repo dans index.html.";
+}
+load();
+poll = setInterval(function(){ if(!saving && !queue.length && !openNew && document.visibilityState==="visible") load(); }, 15000);
+document.addEventListener("visibilitychange", function(){
+  if(document.visibilityState==="visible" && !saving && !queue.length) load();
+});
+
+})();
+</script>
+</body>
+</html>
