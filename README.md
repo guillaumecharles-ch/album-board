@@ -14,8 +14,14 @@ dans ce dépôt. Quand tu bouges une carte, la page réécrit `board.json` via l
 GitHub — donc chaque modif est un commit, et on voit les mêmes tâches tous les deux.
 La page se rafraîchit toute seule toutes les 15 secondes.
 
-Sans token, la page fonctionne en **lecture seule**. Pour pouvoir modifier, il faut
-donner à la page un token GitHub personnel (une fois).
+Sans token, la page est en **lecture seule** : les boutons d'ajout, les flèches et
+le glisser-déposer sont désactivés, pour qu'on ne puisse pas croire qu'on a créé
+une tâche alors que rien ne part sur GitHub. Pour modifier, il faut donner à la
+page un token GitHub personnel — une fois par navigateur.
+
+Si une modif ne peut pas être enregistrée tout de suite (réseau coupé, token
+expiré), elle est gardée dans le navigateur et repart au chargement suivant ; un
+bandeau indique combien de modifs sont encore en attente.
 
 ## Setup — pour Mathieu
 

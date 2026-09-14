@@ -124,6 +124,18 @@
   dialog .acts{display:flex; gap:8px; justify-content:flex-end; margin-top:14px}
   a{color:var(--accent)}
   .err{color:var(--accent); font-size:13px; padding:0 20px}
+  #notice{
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    margin:0; padding:11px 20px; font-size:13.5px;
+    background:var(--accent-soft); color:var(--ink); border-bottom:1px solid var(--line);
+  }
+  #notice b{font-weight:650}
+  #notice button{
+    background:var(--accent); color:#fff; border:0; border-radius:8px;
+    padding:5px 12px; font-size:13px; font-weight:600;
+  }
+  .card.locked .title{cursor:default}
+  .card.locked .who,.card.locked .arrow,.card.locked .del{opacity:.35; cursor:default}
 </style>
 </head>
 <body>
@@ -136,12 +148,13 @@
   <button class="ghost" id="tokenBtn">Token</button>
 </header>
 
+<div id="notice" hidden></div>
 <div class="err" id="err"></div>
 <main id="board"></main>
 
 <dialog id="tokenDlg">
   <h3>Ton token GitHub</h3>
-  <p>Colle un <em>personal access token</em> avec accès en écriture à ce dépôt. Il reste dans ton navigateur (localStorage) et n'est jamais publié. Sans token, le board est en lecture seule.</p>
+  <p>Colle un <em>personal access token</em> avec accès en écriture à ce dépôt (permission <b>Contents&nbsp;: Read and write</b>). Il reste dans ton navigateur et n'est jamais publié. <b>Sans token, le board est en lecture seule&nbsp;: tu ne peux pas créer ni déplacer de tâches.</b></p>
   <input type="password" id="tokenInput" placeholder="github_pat_… ou ghp_…" autocomplete="off">
   <div class="acts">
     <button class="ghost" id="tokenClear">Effacer</button>
@@ -183,6 +196,7 @@ var me    = LS.get("ab.me", PEOPLE[1]);
 var state = {tasks:[]};   // what we render
 var sha   = null;         // sha of board.json on GitHub
 var queue = [];           // ops made locally, not yet confirmed on GitHub
+try{ var q = JSON.parse(LS.get("ab.queue","[]")); if(Array.isArray(q)) queue = q; }catch(e){}
 var saving = false, again = false, poll = null;
 
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
@@ -211,9 +225,15 @@ function apply(st, op){
   return st;
 }
 
+/* La file survit à un rechargement : tant qu'une modif n'est pas confirmée par
+   GitHub, elle reste ici et sera rejouée au prochain chargement. */
+function persistQueue(){ LS.set("ab.queue", JSON.stringify(queue)); }
+
 function doOp(op){
+  if(!token) return;            // lecture seule : aucune modif ne doit être perdue
   apply(state, op);
   queue.push(op);
+  persistQueue();
   render();
   save();
 }
@@ -258,14 +278,16 @@ function load(){
     queue.forEach(function(op){ apply(st, op); });   // keep unsaved local edits visible
     state = st;
     render();
-    setStatus(token ? (queue.length?"busy":"ok") : "ro", token ? (queue.length?"Enregistrement…":"Synchronisé") : "Lecture seule");
+    if(!token) setStatus("ro","Lecture seule");
+    else setStatus(queue.length?"busy":"ok", queue.length?"Enregistrement…":"Synchronisé");
   }).catch(function(e){
     setStatus("err", e.message);
+    render();
   });
 }
 
 function save(){
-  if(!token){ setStatus("ro","Lecture seule — ajoute ton token"); return; }
+  if(!token){ setStatus("ro","Lecture seule"); return; }
   if(saving){ again = true; return; }
   if(!queue.length) return;
   saving = true; setStatus("busy","Enregistrement…");
@@ -291,6 +313,7 @@ function save(){
       .then(function(j){
         sha = j.content.sha;
         queue = queue.slice(batch.length);
+        persistQueue();
         var fresh = st;
         queue.forEach(function(op){ apply(fresh, op); });
         state = fresh; render();
@@ -310,6 +333,29 @@ function setStatus(kind, text){
   var el = document.getElementById("status");
   el.className = "pill " + kind;
   document.getElementById("statusText").textContent = text;
+  notice();
+}
+
+/* Bandeau : dire clairement quand rien ne part sur GitHub. */
+function notice(){
+  var n = document.getElementById("notice");
+  if(!token){
+    n.hidden = false;
+    n.innerHTML = queue.length
+      ? "<span><b>Lecture seule.</b> " + queue.length + " modification" + (queue.length>1?"s":"") +
+        " en attente : ajoute ton token pour " + (queue.length>1?"les":"l'") + "enregistrer.</span>"
+      : "<span><b>Lecture seule.</b> Ajoute ton token GitHub pour créer, déplacer et assigner des tâches.</span>";
+    var b = document.createElement("button");
+    b.textContent = "Ajouter mon token";
+    b.onclick = function(){ openToken(); };
+    n.appendChild(b);
+  } else if(queue.length){
+    n.hidden = false;
+    n.textContent = queue.length + " modification" + (queue.length>1?"s":"") +
+      " pas encore enregistrée" + (queue.length>1?"s":"") + " sur GitHub — garde cet onglet ouvert.";
+  } else {
+    n.hidden = true; n.textContent = "";
+  }
 }
 
 /* ---------- rendering ---------- */
@@ -334,19 +380,22 @@ function render(){
     items.forEach(function(t){ list.appendChild(cardEl(t, ci)); });
     el.appendChild(list);
 
-    if(openNew === col.id) el.appendChild(newBox(col.id));
-    else {
-      var add = document.createElement("button");
-      add.className = "add"; add.textContent = "+ Ajouter une tâche";
-      add.onclick = function(){ openNew = col.id; render(); };
-      el.appendChild(add);
+    if(token){
+      if(openNew === col.id) el.appendChild(newBox(col.id));
+      else {
+        var add = document.createElement("button");
+        add.className = "add"; add.textContent = "+ Ajouter une tâche";
+        add.onclick = function(){ openNew = col.id; render(); };
+        el.appendChild(add);
+      }
     }
 
     /* drop target */
-    el.addEventListener("dragover", function(e){ e.preventDefault(); el.classList.add("over"); });
+    el.addEventListener("dragover", function(e){ if(!token) return; e.preventDefault(); el.classList.add("over"); });
     el.addEventListener("dragleave", function(){ el.classList.remove("over"); });
     el.addEventListener("drop", function(e){
       e.preventDefault(); el.classList.remove("over");
+      if(!token) return;
       var id = e.dataTransfer.getData("text/plain"); if(!id) return;
       var before = null, cards = [].slice.call(list.querySelectorAll(".card"));
       for(var i=0;i<cards.length;i++){
@@ -368,7 +417,8 @@ function render(){
 
 function cardEl(t, ci){
   var c = document.createElement("article");
-  c.className = "card"; c.dataset.id = t.id; c.draggable = true;
+  c.className = "card" + (token ? "" : " locked");
+  c.dataset.id = t.id; c.draggable = !!token;
 
   c.addEventListener("dragstart", function(e){
     e.dataTransfer.setData("text/plain", t.id);
@@ -379,11 +429,11 @@ function cardEl(t, ci){
 
   var ta = document.createElement("textarea");
   ta.className = "title"; ta.rows = 1; ta.value = t.title;
-  ta.dataset.focus = t.id;
+  ta.dataset.focus = t.id; ta.readOnly = !token;
   ta.addEventListener("input", function(){ ta.style.height="auto"; ta.style.height=ta.scrollHeight+"px"; });
-  ta.addEventListener("focus", function(){ c.draggable = false; });
+  ta.addEventListener("focus", function(){ if(token) c.draggable = false; });
   ta.addEventListener("blur", function(){
-    c.draggable = true;
+    c.draggable = !!token;
     var v = ta.value.trim();
     if(!v){ ta.value = t.title; return; }
     if(v !== t.title) doOp({t:"title", id:t.id, title:v});
@@ -400,7 +450,7 @@ function cardEl(t, ci){
   var who = document.createElement("button");
   who.className = "who"; who.dataset.who = t.who || "";
   who.textContent = t.who || "non assigné";
-  who.title = "Changer l'assignation";
+  who.title = token ? "Changer l'assignation" : "Lecture seule"; who.disabled = !token;
   who.onclick = function(){
     var order = PEOPLE.concat([""]);
     var next = order[(order.indexOf(t.who||"")+1) % order.length];
@@ -412,18 +462,18 @@ function cardEl(t, ci){
 
   var left = document.createElement("button");
   left.className = "arrow"; left.textContent = "←"; left.title = "Colonne précédente";
-  left.disabled = ci===0;
+  left.disabled = ci===0 || !token;
   left.onclick = function(){ doOp({t:"move", id:t.id, status:COLS[ci-1].id, before:null}); };
   row.appendChild(left);
 
   var right = document.createElement("button");
   right.className = "arrow"; right.textContent = "→"; right.title = "Colonne suivante";
-  right.disabled = ci===COLS.length-1;
+  right.disabled = ci===COLS.length-1 || !token;
   right.onclick = function(){ doOp({t:"move", id:t.id, status:COLS[ci+1].id, before:null}); };
   row.appendChild(right);
 
   var del = document.createElement("button");
-  del.className = "del"; del.textContent = "✕"; del.title = "Supprimer";
+  del.className = "del"; del.textContent = "✕"; del.title = "Supprimer"; del.disabled = !token;
   del.onclick = function(){ if(confirm("Supprimer « "+t.title+" » ?")) doOp({t:"del", id:t.id}); };
   row.appendChild(del);
 
@@ -485,12 +535,14 @@ PEOPLE.forEach(function(p){
 meSel.onchange = function(){ me = meSel.value; LS.set("ab.me", me); };
 
 var dlg = document.getElementById("tokenDlg"), tIn = document.getElementById("tokenInput");
-document.getElementById("tokenBtn").onclick = function(){ tIn.value = token; dlg.showModal(); };
+function openToken(){ tIn.value = token; dlg.showModal(); tIn.focus(); }
+document.getElementById("tokenBtn").onclick = openToken;
 document.getElementById("tokenCancel").onclick = function(){ dlg.close(); };
 document.getElementById("tokenSave").onclick = function(){
   token = tIn.value.trim(); LS.set("ab.token", token); dlg.close(); load().then(save);
 };
 document.getElementById("tokenClear").onclick = function(){
+  if(queue.length && !confirm(queue.length+" modification(s) ne sont pas encore enregistrées sur GitHub. Effacer le token quand même ?")) return;
   token = ""; LS.del("ab.token"); tIn.value = ""; dlg.close(); load();
 };
 
@@ -498,7 +550,14 @@ document.getElementById("tokenClear").onclick = function(){
 if(CFG.owner.indexOf("__") === 0){
   document.getElementById("err").textContent = "Configuration manquante : renseigne owner/repo dans index.html.";
 }
-load();
+
+window.addEventListener("beforeunload", function(e){
+  if(queue.length){ e.preventDefault(); e.returnValue = ""; }
+});
+
+notice();
+if(!token) openToken();           // première visite : demander le token tout de suite
+load().then(function(){ if(token && queue.length) save(); });
 function typing(){
   var a = document.activeElement;
   return !!a && (a.tagName==="TEXTAREA" || a.tagName==="INPUT");
