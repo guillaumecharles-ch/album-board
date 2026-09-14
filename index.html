@@ -343,7 +343,7 @@ function notice(){
     n.hidden = false;
     n.innerHTML = queue.length
       ? "<span><b>Lecture seule.</b> " + queue.length + " modification" + (queue.length>1?"s":"") +
-        " en attente : ajoute ton token pour " + (queue.length>1?"les":"l'") + "enregistrer.</span>"
+        " en attente : ajoute ton token pour " + (queue.length>1?"les ":"l'") + "enregistrer.</span>"
       : "<span><b>Lecture seule.</b> Ajoute ton token GitHub pour créer, déplacer et assigner des tâches.</span>";
     var b = document.createElement("button");
     b.textContent = "Ajouter mon token";
