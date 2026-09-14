@@ -1,13 +1,6 @@
 {
   "tasks": [
     {
-      "id": "mu1g3odr4owep",
-      "title": "Compo1 : enresgistrer basse",
-      "who": "Mathieu",
-      "status": "backlog",
-      "created": "2026-09-14T16:16:31.791Z"
-    },
-    {
       "id": "mu1g3y6nx253r",
       "title": "Compo1 : faire la batterie",
       "who": "Mathieu",
@@ -20,6 +13,13 @@
       "who": "Guillaume",
       "status": "backlog",
       "created": "2026-09-14T16:16:54.751Z"
+    },
+    {
+      "id": "mu1g3odr4owep",
+      "title": "Compo1 : enresgistrer basse",
+      "who": "Mathieu",
+      "status": "pret",
+      "created": "2026-09-14T16:16:31.791Z"
     }
   ]
 }
