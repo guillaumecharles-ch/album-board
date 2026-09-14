@@ -23,15 +23,36 @@ Si une modif ne peut pas être enregistrée tout de suite (réseau coupé, token
 expiré), elle est gardée dans le navigateur et repart au chargement suivant ; un
 bandeau indique combien de modifs sont encore en attente.
 
-## Setup — pour Mathieu
+## Setup — Guillaume (propriétaire du dépôt)
 
-1. Accepte l'invitation de collaborateur sur ce dépôt (elle arrive par mail).
-2. Crée un token : **https://github.com/settings/personal-access-tokens/new**
-   - *Repository access* → **Only select repositories** → `album-board`
-   - *Permissions* → **Repository permissions → Contents → Read and write**
-   - *Expiration* → ce que tu veux (1 an, c'est bien)
-   - → **Generate token**, puis copie-le (il ne s'affiche qu'une fois)
-3. Ouvre le board, clique sur **Token** en haut à droite, colle, **Enregistrer**.
+Token *fine-grained* : **https://github.com/settings/personal-access-tokens/new**
+
+- *Repository access* → **Only select repositories** → `album-board`
+- *Permissions* → onglet **Repositories** → **Add permissions** → `Contents` →
+  **Read and write** (l'onglet *Account* reste à 0 ; *Metadata: Read-only*
+  s'ajoute tout seul, c'est normal)
+- *Expiration* → ce que tu veux (1 an, c'est bien)
+- **Generate token**, puis copie-le : il ne s'affiche qu'une fois
+
+## Setup — Mathieu (collaborateur)
+
+⚠️ La procédure n'est **pas** la même : les tokens *fine-grained* ne peuvent
+accéder qu'aux dépôts dont on est soi-même propriétaire. Comme `album-board`
+appartient à Guillaume, un token fine-grained de Mathieu ne verrait même pas le
+dépôt. Il lui faut un token **classic**.
+
+1. Accepter l'invitation de collaborateur (elle arrive par mail, ou sur
+   https://github.com/guillaumecharles-ch/album-board/invitations).
+2. Créer un token classic : **https://github.com/settings/tokens/new**
+   - *Note* → `album-board`
+   - *Expiration* → ce que tu veux
+   - *Select scopes* → cocher **`public_repo`** uniquement (suffisant : le dépôt
+     est public ; inutile de cocher `repo`, qui donnerait accès à tous tes
+     dépôts privés)
+   - **Generate token**, puis copier — il ne s'affiche qu'une fois
+
+Dans les deux cas : ouvrir le board, bouton **Token** en haut à droite, coller,
+**Enregistrer**.
 
 Le token reste dans le `localStorage` de ton navigateur. Il n'est jamais envoyé
 ailleurs qu'à l'API GitHub et n'est jamais écrit dans le dépôt. À refaire sur
