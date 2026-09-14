@@ -1,13 +1,6 @@
 {
   "tasks": [
     {
-      "id": "mu1g3y6nx253r",
-      "title": "Compo1 : faire la batterie",
-      "who": "Mathieu",
-      "status": "backlog",
-      "created": "2026-09-14T16:16:44.495Z"
-    },
-    {
       "id": "mu1g463jegbc7",
       "title": "Compo1: enregistrer chant",
       "who": "Guillaume",
@@ -20,6 +13,13 @@
       "who": "Mathieu",
       "status": "pret",
       "created": "2026-09-14T16:16:31.791Z"
+    },
+    {
+      "id": "mu1g3y6nx253r",
+      "title": "Compo1 : faire la batterie",
+      "who": "Mathieu",
+      "status": "pret",
+      "created": "2026-09-14T16:16:44.495Z"
     }
   ]
 }
